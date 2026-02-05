@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlcli"
+version = "1.0.0"
+description = "Production-grade ML CLI tool for training, evaluation, and inference"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "ML Team", email = "ml-team@example.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["machine-learning", "deep-learning", "pytorch", "cli", "computer-vision"]
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "numpy>=1.24.0",
+    "pillow>=9.0.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.65.0",
+    "rich>=13.0.0",
+    "click>=8.1.0",
+    "pydantic>=2.0.0",
+    "tensorboard>=2.13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "ruff>=0.0.270",
+]
+transformers = [
+    "timm>=0.9.0",
+    "transformers>=4.30.0",
+]
+all = [
+    "mlcli[dev,transformers]",
+]
+
+[project.scripts]
+mlcli = "mlcli.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/example/mlcli"
+Documentation = "https://mlcli.readthedocs.io"
+Repository = "https://github.com/example/mlcli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = ["E", "F", "W", "I", "N", "D", "UP", "B", "C4", "SIM"]
+ignore = ["D100", "D104"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=mlcli --cov-report=term-missing"

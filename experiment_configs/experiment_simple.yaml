@@ -1,0 +1,33 @@
+# Simple Single-Model Experiment Configuration
+# Use with: mlcli> experiment my_exp --config configs/experiment_simple.yaml
+
+name: simple_experiment
+description: "Train a single model with specific configuration"
+seed: 42
+
+# Single model definition
+model:
+  architecture: resnet50
+  num_classes: 10
+  pretrained: true
+
+# Single dataset
+dataset:
+  path: ./data/train
+  type: folder
+
+# Training configuration
+training:
+  epochs: 50
+  learning_rate: 0.001
+  batch_size: 32
+  optimizer: adamw
+  scheduler: cosine
+  mixed_precision: true
+  weight_decay: 0.0001
+
+# Logging settings
+logging:
+  console: true
+  tensorboard: true
+  log_dir: ./logs

@@ -1,0 +1,97 @@
+{
+  "name": "grid_search",
+  "status": "completed",
+  "created_at": "2026-02-06T00:15:26.884601",
+  "started_at": "2026-02-06T00:15:43.361152",
+  "completed_at": "2026-02-06T00:21:25.398670",
+  "config": {
+    "model": {},
+    "training": {
+      "epochs": 10,
+      "learning_rate": 0.001,
+      "batch_size": 32
+    },
+    "dataset": {
+      "path": null
+    }
+  },
+  "results": {
+    "total_runs": 3,
+    "best_run": {
+      "model": "resnet_small",
+      "dataset": "train_v1",
+      "config": "fast",
+      "best_accuracy": 43.261802575107296,
+      "final_loss": 1.1614884105888572,
+      "final_accuracy": 43.261802575107296,
+      "history": {
+        "loss": [
+          1.438497250144546,
+          1.1614884105888572
+        ],
+        "accuracy": [
+          39.91416309012875,
+          43.261802575107296
+        ]
+      }
+    },
+    "all_runs": [
+      {
+        "model": "resnet_small",
+        "dataset": "train_v1",
+        "config": "fast",
+        "best_accuracy": 43.261802575107296,
+        "final_loss": 1.1614884105888572,
+        "final_accuracy": 43.261802575107296,
+        "history": {
+          "loss": [
+            1.438497250144546,
+            1.1614884105888572
+          ],
+          "accuracy": [
+            39.91416309012875,
+            43.261802575107296
+          ]
+        }
+      },
+      {
+        "model": "resnet_large",
+        "dataset": "train_v1",
+        "config": "fast",
+        "best_accuracy": 40.17167381974249,
+        "final_loss": 1.189619499283868,
+        "final_accuracy": 40.17167381974249,
+        "history": {
+          "loss": [
+            1.4051717729181856,
+            1.189619499283868
+          ],
+          "accuracy": [
+            39.65665236051502,
+            40.17167381974249
+          ]
+        }
+      },
+      {
+        "model": "vit_model",
+        "dataset": "train_v1",
+        "config": "fast",
+        "best_accuracy": 38.62660944206009,
+        "final_loss": 1.266702693861884,
+        "final_accuracy": 38.62660944206009,
+        "history": {
+          "loss": [
+            2.151816380990518,
+            1.266702693861884
+          ],
+          "accuracy": [
+            35.45064377682404,
+            38.62660944206009
+          ]
+        }
+      }
+    ]
+  },
+  "history": {},
+  "best_metric": 43.261802575107296
+}
