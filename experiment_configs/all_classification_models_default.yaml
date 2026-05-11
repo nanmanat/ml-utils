@@ -1,0 +1,119 @@
+# Experiment: All classification models with default hyperparameters
+# Generated to compare all 23 available classification architectures
+
+name: all_classification_models_default
+description: "Run all classification models with default hyperparameters"
+seed: 42
+
+models:
+  # Ordered smallest → largest by parameter count (approximate)
+  - name: mobilenet_v3_small    # ~2.5M
+    architecture: mobilenet_v3_small
+    num_classes: 4
+    pretrained: true
+  - name: mobilenet_v2          # ~3.4M
+    architecture: mobilenet_v2
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b0       # ~5.3M
+    architecture: efficientnet_b0
+    num_classes: 4
+    pretrained: true
+  - name: mobilenet_v3_large    # ~5.5M
+    architecture: mobilenet_v3_large
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b1       # ~7.8M
+    architecture: efficientnet_b1
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b2       # ~9.2M
+    architecture: efficientnet_b2
+    num_classes: 4
+    pretrained: true
+  - name: resnet18               # ~11.7M
+    architecture: resnet18
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b3       # ~12.2M
+    architecture: efficientnet_b3
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b4       # ~19.3M
+    architecture: efficientnet_b4
+    num_classes: 4
+    pretrained: true
+  - name: resnet34               # ~21.8M
+    architecture: resnet34
+    num_classes: 4
+    pretrained: true
+  - name: resnet50               # ~25.6M
+    architecture: resnet50
+    num_classes: 4
+    pretrained: true
+  - name: swin_tiny              # ~28.3M
+    architecture: swin_tiny
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b5       # ~30.4M
+    architecture: efficientnet_b5
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b6       # ~43.0M
+    architecture: efficientnet_b6
+    num_classes: 4
+    pretrained: true
+  - name: resnet101              # ~44.5M
+    architecture: resnet101
+    num_classes: 4
+    pretrained: true
+  - name: swin_small             # ~49.6M
+    architecture: swin_small
+    num_classes: 4
+    pretrained: true
+  - name: resnet152              # ~60.2M
+    architecture: resnet152
+    num_classes: 4
+    pretrained: true
+  - name: efficientnet_b7       # ~66.3M
+    architecture: efficientnet_b7
+    num_classes: 4
+    pretrained: true
+  - name: vit_base_patch16      # ~86.6M
+    architecture: vit_base_patch16
+    num_classes: 4
+    pretrained: true
+  - name: swin_base              # ~87.8M
+    architecture: swin_base
+    num_classes: 4
+    pretrained: true
+  - name: vit_base_patch32      # ~88.2M
+    architecture: vit_base_patch32
+    num_classes: 4
+    pretrained: true
+  - name: swin_large             # ~196.5M
+    architecture: swin_large
+    num_classes: 4
+    pretrained: true
+  - name: vit_large_patch16     # ~307.4M
+    architecture: vit_large_patch16
+    num_classes: 4
+    pretrained: true
+
+datasets:
+  - name: train_v1
+    path: /dataset
+    type: folder
+
+configs:
+  - name: default
+    epochs: 200
+    learning_rate: 0.001
+    batch_size: 16
+    weight_decay: 0.0001
+    optimizer: adamw
+    scheduler: cosine
+    warmup_epochs: 5
+    gradient_clip: 1.0
+    mixed_precision: true
+    early_stopping_patience: 10
