@@ -338,19 +338,29 @@ mlcli/
 
 ## Contributing
 
-Contributions are welcome — bug fixes, new model support, documentation improvements, or new features.
+Contributions are welcome — bug fixes, new model support, documentation improvements, or new features. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
-1. Fork the repo and create a branch: `git checkout -b feat/my-feature`
-2. Install dev dependencies: `pip install -e ".[dev]"`
-3. Make your changes and add tests
-4. Run checks:
-   ```bash
-   ruff check src/        # lint
-   pytest                 # tests
+**Setup:**
+```bash
+git clone https://github.com/nanmanat/ml-utils.git
+cd ml-utils
+pip install -e ".[dev]"
+pre-commit install --hook-type commit-msg
+```
+
+**Workflow:**
+1. Create a branch from `main`: `git checkout -b feat/my-feature`
+2. Make changes and add tests where applicable
+3. Commit using [Conventional Commits](https://www.conventionalcommits.org/) — enforced on PRs:
    ```
-5. Open a pull request
+   feat(training): add cosine annealing with warm restarts
+   fix(checkpoint): prevent emergency save from overwriting best_model.pt
+   docs: update grid search example
+   ```
+4. Open a pull request — CI runs lint + tests automatically; direct pushes to `main` are blocked
+5. On merge to `main`, `python-semantic-release` bumps the version and publishes a release automatically
 
-For larger changes, please open an issue first to discuss the approach.
+For larger changes, open an issue first to discuss the approach.
 
 ---
 
