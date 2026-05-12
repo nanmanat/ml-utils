@@ -237,6 +237,53 @@ class CheckpointManager:
         
         return info
     
+    def save_emergency(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        epoch: int,
+        step: int,
+        error_msg: str,
+        scheduler: Optional[Any] = None,
+        scaler: Optional[torch.cuda.amp.GradScaler] = None,
+        config: Optional[ExperimentConfig] = None,
+    ) -> Path:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"emergency_epoch{epoch:04d}.pt"
+        filepath = self.checkpoint_dir / filename
+
+        checkpoint = {
+            "epoch": epoch,
+            "step": step,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "failed": True,
+            "error": error_msg,
+            "timestamp": timestamp,
+        }
+        if scheduler is not None:
+            checkpoint["scheduler_state_dict"] = scheduler.state_dict()
+        if scaler is not None:
+            checkpoint["scaler_state_dict"] = scaler.state_dict()
+        if config is not None:
+            checkpoint["config"] = config.to_dict()
+
+        torch.save(checkpoint, filepath)
+
+        failure_info = {
+            "epoch": epoch,
+            "step": step,
+            "error": error_msg,
+            "timestamp": timestamp,
+            "checkpoint_path": str(filepath),
+        }
+        tmp_path = self.checkpoint_dir / "failure_info.json.tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(failure_info, f, indent=2)
+        tmp_path.replace(self.checkpoint_dir / "failure_info.json")
+
+        return filepath
+
     def _is_best(self, metrics: Dict[str, float]) -> bool:
         """Check if current metrics are the best so far."""
         if self.metric_name not in metrics:

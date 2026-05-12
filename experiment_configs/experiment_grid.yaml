@@ -33,5 +33,3 @@ configs:
     scheduler: cosine
     mixed_precision: false
 
-# This configuration will create a grid of:
-# 4 models × 2 datasets × 3 configs = 24 experiment runs

@@ -46,6 +46,8 @@ dev = [
     "isort>=5.12.0",
     "mypy>=1.0.0",
     "ruff>=0.0.270",
+    "python-semantic-release>=9.0.0",
+    "commitizen>=3.0.0",
 ]
 transformers = [
     "timm>=0.9.0",
@@ -93,3 +95,32 @@ disallow_untyped_defs = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --cov=mlcli --cov-report=term-missing"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+build_command = "pip install build && python -m build"
+commit_message = "chore(release): v{version} [skip ci]"
+major_on_zero = false
+tag_format = "v{version}"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "perf", "refactor", "docs", "style", "test", "chore", "ci", "build"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf", "refactor"]
+
+[tool.semantic_release.remote]
+type = "github"
+
+[tool.semantic_release.publish]
+dist_glob_patterns = ["dist/*"]
+upload_to_vcs_release = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_scheme = "semver"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true

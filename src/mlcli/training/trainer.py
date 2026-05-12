@@ -244,9 +244,22 @@ class Trainer:
                 # Print epoch summary
                 self._print_epoch_summary(epoch, epoch_logs)
         
+        except Exception as exc:
+            self.logger.log(f"Training failed at epoch {self.current_epoch}: {exc}")
+            self.checkpoint_manager.save_emergency(
+                model=self.model,
+                optimizer=self.optimizer,
+                epoch=self.current_epoch,
+                step=self.global_step,
+                error_msg=str(exc),
+                scheduler=self.scheduler,
+                scaler=self.scaler,
+                config=self.config,
+            )
+            raise
         except KeyboardInterrupt:
             self.logger.log("Training interrupted by user.")
-        
+
         finally:
             self.callbacks.on_train_end({"history": history})
         

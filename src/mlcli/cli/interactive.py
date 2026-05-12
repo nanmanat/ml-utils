@@ -8,7 +8,6 @@ training, and inference.
 from __future__ import annotations
 
 import cmd
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -45,7 +44,48 @@ class ExperimentRun:
         self.datasets: List[str] = []
         self.configs: List[Dict[str, Any]] = []
         self.run_results: List[Dict[str, Any]] = []  # Results for each combination
-    
+        self.completed_run_keys: set = set()
+
+    def save_to_disk(self, path: "Path") -> None:
+        import json
+        data = {
+            "name": self.name,
+            "config": self.config,
+            "status": self.status,
+            "created_at": self.created_at.isoformat(),
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "results": self.results,
+            "history": self.history,
+            "best_metric": self.best_metric,
+            "models": self.models,
+            "datasets": self.datasets,
+            "configs": self.configs,
+            "run_results": self.run_results,
+            "completed_run_keys": list(self.completed_run_keys),
+        }
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=2, default=str))
+        tmp.replace(path)
+
+    @classmethod
+    def load_from_disk(cls, path: "Path") -> "ExperimentRun":
+        import json
+        data = json.loads(path.read_text())
+        exp = cls(name=data["name"], config=data.get("config", {}), status=data.get("status", "created"))
+        exp.created_at = datetime.fromisoformat(data["created_at"]) if data.get("created_at") else exp.created_at
+        exp.started_at = datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None
+        exp.completed_at = datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
+        exp.results = data.get("results", {})
+        exp.history = data.get("history", {})
+        exp.best_metric = data.get("best_metric")
+        exp.models = data.get("models", [])
+        exp.datasets = data.get("datasets", [])
+        exp.configs = data.get("configs", [])
+        exp.run_results = data.get("run_results", [])
+        exp.completed_run_keys = set(data.get("completed_run_keys", []))
+        return exp
+
     def __repr__(self) -> str:
         return f"ExperimentRun(name={self.name!r}, status={self.status!r})"
 
@@ -134,7 +174,6 @@ class InteractiveShell(cmd.Cmd):
             Tuple of (precision, recall, f1_score)
         """
         import numpy as np
-        from collections import defaultdict
         
         predictions = np.array(predictions)
         targets = np.array(targets)
@@ -948,7 +987,14 @@ class InteractiveShell(cmd.Cmd):
                 
                 self._experiments[exp_name] = exp
                 self._current_experiment = exp_name
-                
+
+                # Set up state path for fail-safety
+                _exp_output_dir = Path(self.ctx.output_dir or "./outputs") / exp_name
+                _exp_output_dir.mkdir(parents=True, exist_ok=True)
+                _state_path = _exp_output_dir / "experiment_state.json"
+                exp.state_path = _state_path
+                exp.save_to_disk(_state_path)
+
                 # Display summary
                 self._print_success(f"Created experiment: {exp_name}")
                 if exp.models:
@@ -985,7 +1031,14 @@ class InteractiveShell(cmd.Cmd):
                 exp = ExperimentRun(name=exp_name, config=config)
                 self._experiments[exp_name] = exp
                 self._current_experiment = exp_name
-                
+
+                # Set up state path for fail-safety
+                _exp_output_dir = Path(self.ctx.output_dir or "./outputs") / exp_name
+                _exp_output_dir.mkdir(parents=True, exist_ok=True)
+                _state_path = _exp_output_dir / "experiment_state.json"
+                exp.state_path = _state_path
+                exp.save_to_disk(_state_path)
+
                 self._print_success(f"Created experiment: {exp_name}")
                 click.echo(f"  Model: {config.get('model', {}).get('architecture', 'Not set')}")
                 click.echo(f"  Epochs: {config.get('training', {}).get('epochs', 'Not set')}")
@@ -2240,22 +2293,40 @@ class InteractiveShell(cmd.Cmd):
     def do_run_grid_experiment(self, arg: str) -> None:
         """
         Run experiment with all combinations of models, datasets, and configs.
-        
+
         Usage:
             run_grid_experiment           - Run current experiment grid
             run_grid_experiment my_exp    - Run specific experiment grid
+            run_grid_experiment --resume  - Resume interrupted grid experiment
         """
-        exp_name = arg.strip() if arg else self._current_experiment
-        
+        parts = arg.split() if arg else []
+        exp_name = self._current_experiment
+        resume = False
+
+        for part in parts:
+            if part == "--resume":
+                resume = True
+            elif not part.startswith("--"):
+                exp_name = part
+
         if not exp_name:
             self._print_error("No experiment specified and no current experiment.")
             return
-        
+
         if exp_name not in self._experiments:
             self._print_error(f"Experiment not found: {exp_name}")
             return
-        
+
         exp = self._experiments[exp_name]
+
+        if resume:
+            _state_path = Path(self.ctx.output_dir or "./outputs") / exp_name / "experiment_state.json"
+            if _state_path.exists():
+                exp = ExperimentRun.load_from_disk(_state_path)
+                self._experiments[exp_name] = exp
+                self._print_info(f"Resumed experiment '{exp_name}': {len(exp.completed_run_keys)} combos already done")
+            else:
+                self._print_warning("No saved state found, starting fresh")
         
         # Validate experiment has models, datasets, and configs
         models = exp.models if exp.models else ([self._model_name] if self._model_name else [])
@@ -2288,8 +2359,17 @@ class InteractiveShell(cmd.Cmd):
         
         exp.status = "running"
         exp.started_at = datetime.now()
-        exp.run_results = []
-        
+        if not resume:
+            exp.run_results = []
+
+        # Determine state path for incremental saves
+        _state_path = getattr(exp, "state_path", None)
+        if _state_path is None:
+            _exp_output_dir = Path(self.ctx.output_dir or "./outputs") / exp_name
+            _exp_output_dir.mkdir(parents=True, exist_ok=True)
+            _state_path = _exp_output_dir / "experiment_state.json"
+            exp.state_path = _state_path
+
         run_idx = 0
         
         try:
@@ -2302,11 +2382,16 @@ class InteractiveShell(cmd.Cmd):
                     for config in configs:
                         run_idx += 1
                         config_name = config.get("_name", f"config_{run_idx}")
-                        
+
+                        _combo_key = f"{model_name}|{dataset_name}|{config_name}"
+                        if _combo_key in exp.completed_run_keys:
+                            self._print_info(f"Skipping already-completed: {_combo_key}")
+                            continue
+
                         click.echo("\n" + "-" * 60)
                         click.echo(f"Run {run_idx}/{total_runs}: {model_name} + {dataset_name} + {config_name}")
                         click.echo("-" * 60)
-                        
+
                         # Get model
                         if model_name in self._models:
                             model = self._models[model_name]["model"]
@@ -2433,7 +2518,9 @@ class InteractiveShell(cmd.Cmd):
                             "history": run_history,
                         }
                         exp.run_results.append(run_result)
-                        
+                        exp.completed_run_keys.add(_combo_key)
+                        exp.save_to_disk(_state_path)
+
                         click.echo(f"  ✓ Acc: {best_acc:.2f}%, F1: {best_f1:.4f}")
             
             # Experiment completed

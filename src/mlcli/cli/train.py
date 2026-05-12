@@ -127,6 +127,12 @@ from mlcli.cli.main import Context, pass_context
     help="Resume training from checkpoint.",
 )
 @click.option(
+    "--auto-resume",
+    is_flag=True,
+    default=False,
+    help="Auto-resume from latest checkpoint in output directory.",
+)
+@click.option(
     "--num-workers",
     type=int,
     default=4,
@@ -181,6 +187,7 @@ def train(
     early_stopping: Optional[int],
     checkpoint_dir: Optional[Path],
     resume: Optional[Path],
+    auto_resume: bool,
     num_workers: int,
     log_interval: int,
     tensorboard: bool,
@@ -362,21 +369,20 @@ def train(
 
     optim = create_optimizer(
         model_instance,
-        optimizer_name=optimizer,
-        lr=learning_rate,
-        weight_decay=weight_decay,
+        training_config,
     )
 
     sched = None
     if scheduler and scheduler != "none":
         sched = create_scheduler(
             optim,
-            scheduler_name=scheduler,
-            epochs=epochs,
+            training_config,
+            len(train_loader),
         )
 
     # Resume from checkpoint if specified
     start_epoch = 0
+    checkpoint = None
     if resume:
         click.echo(f"\nResuming from checkpoint: {resume}")
         checkpoint = torch.load(resume)
@@ -384,6 +390,8 @@ def train(
         optim.load_state_dict(checkpoint["optimizer_state_dict"])
         start_epoch = checkpoint.get("epoch", 0) + 1
         click.echo(f"Resuming from epoch {start_epoch}")
+        if "scheduler_state_dict" in checkpoint and sched is not None:
+            sched.load_state_dict(checkpoint["scheduler_state_dict"])
 
     # Define loss function
     criterion = torch.nn.CrossEntropyLoss() if task == "classification" else None
@@ -400,8 +408,24 @@ def train(
         checkpoints_dir = output_dir / "checkpoints"
         checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
+        if auto_resume and resume is None:
+            candidates = sorted(checkpoints_dir.glob("epoch_*.pt")) + sorted(checkpoints_dir.glob("emergency_epoch*.pt"))
+            if candidates:
+                resume = candidates[-1]
+                click.echo(f"Auto-resuming from: {resume}")
+                checkpoint = torch.load(resume)
+                model_instance.load_state_dict(checkpoint["model_state_dict"])
+                optim.load_state_dict(checkpoint["optimizer_state_dict"])
+                start_epoch = checkpoint.get("epoch", 0) + 1
+                click.echo(f"Resuming from epoch {start_epoch}")
+                if "scheduler_state_dict" in checkpoint and sched is not None:
+                    sched.load_state_dict(checkpoint["scheduler_state_dict"])
+
         use_amp = mixed_precision and device == "cuda"
         scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+
+        if checkpoint is not None and "scaler_state_dict" in checkpoint:
+            scaler.load_state_dict(checkpoint["scaler_state_dict"])
         best_monitor = float("inf")
         no_improve_epochs = 0
 
@@ -541,6 +565,37 @@ def train(
             import traceback
 
             traceback.print_exc()
+        from datetime import datetime
+        try:
+            _epoch_idx = locals().get("epoch_idx", -1)
+            _ckpt_path = checkpoints_dir / f"emergency_epoch{_epoch_idx:03d}.pt"
+            _emergency = {
+                "epoch": _epoch_idx,
+                "model_state_dict": model_instance.state_dict(),
+                "optimizer_state_dict": optim.state_dict(),
+                "model_config": model_config.model_dump(),
+                "training_config": training_config.model_dump(),
+                "error": str(e),
+            }
+            if sched is not None:
+                _emergency["scheduler_state_dict"] = sched.state_dict()
+            if use_amp:
+                _emergency["scaler_state_dict"] = scaler.state_dict()
+            import torch as _torch
+            _torch.save(_emergency, _ckpt_path)
+            _failure = {
+                "epoch": _epoch_idx,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+                "checkpoint_path": str(_ckpt_path),
+            }
+            import json as _json, os as _os
+            _tmp = output_dir / "failure_info.json.tmp"
+            _tmp.write_text(_json.dumps(_failure, indent=2))
+            _os.replace(_tmp, output_dir / "failure_info.json")
+            click.echo(f"Emergency checkpoint saved to: {_ckpt_path}")
+        except Exception:
+            pass  # Don't mask the original error
         sys.exit(1)
     finally:
         pass
