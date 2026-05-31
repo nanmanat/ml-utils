@@ -150,7 +150,8 @@ def evaluate(
 
         default_transform = transforms.Compose(
             [
-                transforms.Resize((224, 224)),
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],
@@ -159,8 +160,17 @@ def evaluate(
             ]
         )
 
+        if (dataset / "valid").exists():
+            eval_split = "valid"
+        elif (dataset / "val").exists():
+            eval_split = "val"
+        else:
+            eval_split = "test"
+        click.echo(f"Evaluating on split: {eval_split}")
+
         test_dataset = ImageFolderDataset(
             root=dataset,
+            split=eval_split,
             transform=default_transform,
         )
         num_classes = test_dataset.get_num_classes()
@@ -275,11 +285,10 @@ def evaluate(
 
     macro_precision = sum(class_precisions) / len(class_precisions) if class_precisions else 0.0
     macro_recall = sum(class_recalls) / len(class_recalls) if class_recalls else 0.0
-    macro_f1 = (
-        2 * macro_precision * macro_recall / (macro_precision + macro_recall)
-        if (macro_precision + macro_recall) > 0
-        else 0.0
-    )
+    per_class_f1 = [
+        s["f1"] for s in per_class_scores.values()
+    ]
+    macro_f1 = sum(per_class_f1) / len(per_class_f1) if per_class_f1 else 0.0
 
     results: dict[str, Any] = {
         "accuracy": accuracy,

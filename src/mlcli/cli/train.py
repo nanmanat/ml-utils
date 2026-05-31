@@ -250,7 +250,21 @@ def train(
 
         train_transform = transforms.Compose(
             [
-                transforms.Resize((224, 224)),
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+            ]
+        )
+
+        val_transform = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],
@@ -261,6 +275,7 @@ def train(
 
         train_dataset = ImageFolderDataset(
             root=dataset,
+            split="train",
             transform=train_transform,
         )
         num_classes = num_classes or train_dataset.get_num_classes()
@@ -268,10 +283,26 @@ def train(
         if val_dataset:
             val_data = ImageFolderDataset(
                 root=val_dataset,
-                transform=train_transform,
+                split="train",
+                transform=val_transform,
             )
+        elif (dataset / "valid").exists():
+            val_data = ImageFolderDataset(
+                root=dataset,
+                split="valid",
+                transform=val_transform,
+            )
+            click.echo(f"Validation split: {dataset / 'valid'}")
+        elif (dataset / "val").exists():
+            val_data = ImageFolderDataset(
+                root=dataset,
+                split="val",
+                transform=val_transform,
+            )
+            click.echo(f"Validation split: {dataset / 'val'}")
         else:
             val_data = None
+            click.echo("Warning: No valid/ or val/ folder found. Training without validation.")
     else:
         from mlcli.data.detection import COCODataset
 
@@ -426,8 +457,9 @@ def train(
 
         if checkpoint is not None and "scaler_state_dict" in checkpoint:
             scaler.load_state_dict(checkpoint["scaler_state_dict"])
-        best_monitor = float("inf")
+        best_val_metric = float("inf")
         no_improve_epochs = 0
+        best_model_path = checkpoints_dir / "best_model.pt"
 
         for epoch_idx in range(start_epoch, epochs):
             model_instance.train()
@@ -530,14 +562,24 @@ def train(
             click.echo(msg)
 
             monitor_value = epoch_val_loss if epoch_val_loss is not None else epoch_train_loss
-            if monitor_value < best_monitor:
-                best_monitor = monitor_value
+            if monitor_value < best_val_metric:
+                best_val_metric = monitor_value
                 no_improve_epochs = 0
+                torch.save(
+                    {
+                        "epoch": epoch_idx,
+                        "model_state_dict": model_instance.state_dict(),
+                        "optimizer_state_dict": optim.state_dict(),
+                        "model_config": model_config.model_dump(),
+                        "training_config": training_config.model_dump(),
+                    },
+                    best_model_path,
+                )
             else:
                 no_improve_epochs += 1
 
             if early_stopping and no_improve_epochs >= early_stopping:
-                click.echo(f"Early stopping triggered at epoch {epoch_idx + 1}")
+                click.echo(f"Early stopping triggered at epoch {epoch_idx + 1} (no val improvement for {early_stopping} epochs)")
                 break
 
         click.echo("\n" + "=" * 60)
