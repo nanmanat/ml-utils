@@ -109,31 +109,6 @@ class ImageFolderDataset(BaseDataset):
     def class_names(self) -> List[str]:
         return self.classes
     
-    def get_sample_weights(self) -> torch.Tensor:
-        """Get sample weights for weighted sampling."""
-        class_counts = Counter(label for _, label in self.samples)
-        total = len(self.samples)
-        
-        weights = []
-        for _, label in self.samples:
-            weight = total / (len(class_counts) * class_counts[label])
-            weights.append(weight)
-        
-        return torch.tensor(weights, dtype=torch.float)
-    
-    def get_class_weights(self) -> torch.Tensor:
-        """Get class weights for loss weighting."""
-        class_counts = Counter(label for _, label in self.samples)
-        total = len(self.samples)
-        
-        weights = []
-        for i in range(len(self.classes)):
-            count = class_counts.get(i, 1)
-            weight = total / (len(self.classes) * count)
-            weights.append(weight)
-        
-        return torch.tensor(weights, dtype=torch.float)
-    
     def get_info(self) -> DatasetInfo:
         """Get dataset information."""
         class_distribution = Counter(label for _, label in self.samples)

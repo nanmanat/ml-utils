@@ -104,26 +104,6 @@ class BaseDataset(Dataset, ABC):
         """Get class names (method form)."""
         return self.class_names
     
-    def get_sample_weights(self) -> torch.Tensor:
-        """
-        Get sample weights for weighted sampling.
-        
-        Useful for handling class imbalance.
-        
-        Returns:
-            Tensor of sample weights.
-        """
-        raise NotImplementedError
-    
-    def get_class_weights(self) -> torch.Tensor:
-        """
-        Get class weights for loss weighting.
-        
-        Returns:
-            Tensor of class weights.
-        """
-        raise NotImplementedError
-    
     def split_dataset(
         self,
         val_ratio: float = 0.2,
